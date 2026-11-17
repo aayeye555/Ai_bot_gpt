@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI Trader Pro</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1220;--panel:#121d30;--muted:#91a0b8;--line:#26354c;--green:#38d996;--red:#ff6b78;--blue:#7ba7ff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#edf3ff;font:14px Inter,system-ui,Arial}header{padding:22px 5vw;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap}h1{font-size:21px;margin:0}small,.muted{color:var(--muted)}main{max-width:1200px;margin:auto;padding:24px 5vw}.pill{border:1px solid #27664f;color:var(--green);padding:6px 10px;border-radius:20px;font-size:11px;letter-spacing:.08em}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.panel{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:17px;margin-bottom:16px}.metric{font-size:25px;font-weight:700;margin-top:8px}.label{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.08em}h2{font-size:16px;margin:0 0 14px}.row{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}button{background:#315fba;color:white;border:0;padding:9px 13px;border-radius:8px;cursor:pointer;font-weight:600}button.secondary{background:#29364c}button.danger{background:#7b3340}button:disabled{opacity:.45;cursor:not-allowed}.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.signal{border:1px solid var(--line);border-radius:10px;padding:13px}.tag{font-size:11px;padding:4px 7px;border-radius:6px;background:#25364f;color:#c6d7f5}.long{color:var(--green)}.short{color:var(--red)}.order{border-top:1px solid var(--line);padding:13px 0}.actions{display:flex;gap:8px;margin-top:10px}table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:10px 7px;border-bottom:1px solid var(--line);font-size:12px}th{color:var(--muted)}#msg{color:#ffcf80;margin:10px 0;min-height:20px}.foot{color:var(--muted);font-size:11px;line-height:1.6;margin-top:20px}@media(max-width:760px){.grid{grid-template-columns:repeat(2,1fr)}.cards{grid-template-columns:1fr}main{padding:18px 4vw}header{padding:18px 4vw}table{display:block;overflow:auto}}
+</style></head><body>
+<header><div><h1>◈ AI TRADER PRO</h1><small>Binance Futures market intelligence · paper execution</small></div><span class="pill">PAPER MODE · NO LIVE ORDERS</span></header>
+<main>
+<div class="row"><div><h2>Trading overview</h2><small id="updated">Loading account…</small></div><div class="actions"><label class="muted">Coin universe <select id="topN" style="background:#25364f;color:white;padding:8px;border:1px solid #40516b;border-radius:7px"><option value="10">Top 10</option><option value="20">Top 20</option><option value="30">Top 30</option><option value="40">Top 40</option><option value="50">Top 50</option></select></label><button onclick="scan()">Scan market</button><button class="secondary" onclick="pause()">Pause / Resume</button></div></div>
+<p class="foot">Universe is ranked dynamically by 24-hour quote volume among active Binance USDT-margined perpetual contracts. It is not a recommendation to trade every listed coin.</p>
+<div id="msg"></div>
+<section class="grid">
+<div class="panel"><div class="label">Paper equity</div><div class="metric" id="equity">$1,000.00</div></div>
+<div class="panel"><div class="label">Realized P&L</div><div class="metric" id="pnl">$0.00</div></div>
+<div class="panel"><div class="label">Today's P&L</div><div class="metric" id="daily">$0.00</div></div>
+<div class="panel"><div class="label">Open positions</div><div class="metric" id="count">0 / 3</div></div>
+</section>
+<section class="panel"><div class="row"><h2>Market signals</h2><small>Top-ranked USDT perpetuals · 5-minute candles</small></div><div class="cards" id="signals"><div class="muted">Run a scan to load signals.</div></div></section>
+<section class="panel"><h2>Pending trade approvals</h2><div id="pending"><small class="muted">No pending approvals.</small></div></section>
+<section class="panel"><h2>Open paper positions</h2><div id="positions"><small class="muted">No open positions.</small></div></section>
+<section class="panel"><h2>Closed trade history</h2><div id="history"><small class="muted">No closed trades yet.</small></div></section>
+
+<section class="panel"><div class="row"><div><h2>Adaptive AI learning engine</h2><small>Train a market-direction model, validate it, then optionally use it as a signal filter</small></div><span class="tag" id="aiBadge">AI FILTER OFF</span></div>
+<div class="actions" style="margin-bottom:12px"><label class="muted">Training history <select id="aiDays" style="background:#25364f;color:white;padding:8px;border:1px solid #40516b;border-radius:7px"><option value="30">30 days</option><option value="60" selected>60 days</option><option value="90">90 days</option></select></label><button onclick="trainAI()">Train / retrain AI</button><button class="secondary" onclick="toggleAI()" id="aiToggle">Activate AI filter</button></div>
+<div id="aiStatus" class="muted">No trained model loaded. The existing rule-based strategy is active.</div>
+<p class="foot">The model learns a three-class 12-candle direction pattern (SHORT / NEUTRAL / LONG) from historical 5-minute candles. Training uses chronological holdout validation per coin. When activated, it can only filter existing rule-based signals; it cannot create trades, change position sizing, bypass your manual approval, or send live orders. Retraining is manual. Directional accuracy is not proof of profitability.</p></section>
+
+<section class="panel"><div class="row"><div><h2>Self-learning from paper trades</h2><small>Tracks closed-trade outcomes by direction, setup and market regime</small></div><span class="tag">OUTCOME LEARNING</span></div><div id="learningPanel" class="muted">Loading learning memory…</div><button onclick="refreshLearning()">Refresh learning insights</button><p class="foot">Rejected signals are recorded as user feedback, not incorrectly treated as losing trades. Learning insights are advisory and never raise risk or place orders.</p></section>
+<section class="panel"><div class="row"><div><h2>Historical backtesting</h2><small>Replay selected top 10–50 Binance Futures coins; no orders are sent</small></div><span class="tag">BACKTEST MODE</span></div>
+<div class="actions" style="margin-bottom:12px"><label class="muted">Period <select id="btDays" style="background:#25364f;color:white;padding:8px;border:1px solid #40516b;border-radius:7px"><option value="30">30 days</option><option value="90" selected>90 days</option><option value="180">180 days</option><option value="365">365 days</option></select></label>
+<label class="muted">Strategy <select id="btStrategy" style="background:#25364f;color:white;padding:8px;border:1px solid #40516b;border-radius:7px"><option value="COMBINED" selected>Combined LONG + SHORT</option><option value="LONG">LONG only</option><option value="SHORT">SHORT only</option></select></label>
+<label class="muted">Timeframe <select id="btInterval" style="background:#25364f;color:white;padding:8px;border:1px solid #40516b;border-radius:7px"><option value="5m" selected>5 minutes</option><option value="15m">15 minutes</option></select></label>
+<button onclick="backtest()">Run backtest</button></div>
+<div id="btSummary" class="muted">Choose a period and run a historical test.</div><div id="btResults"></div>
+<p class="foot">Backtest assumptions: equal $ allocation per selected pair, 0.5% risk per trade, 2x notional cap, 2R target, estimated 0.05% fee and 0.02% slippage per side. Funding is excluded. Same-candle stop/target conflicts resolve at the stop. Historical results do not predict future performance.</p></section>
+
+<section class="panel"><div class="row"><div><h2>Risk controls</h2><small>Fixed safety settings for this build</small></div><button class="danger" onclick="resetAccount()">Reset paper account</button></div>
+<div class="grid"><div><div class="label">Starting capital</div><b>$1,000</b></div><div><div class="label">Risk per trade</div><b>0.5% · $5 initial</b></div><div><div class="label">Max leverage</div><b>2×</b></div><div><div class="label">Daily loss stop</div><b>1.5% · $15</b></div></div>
+<p class="foot">Position size = min((equity × 0.5%) ÷ stop distance, equity × 2). Target is 2R before costs. Simulated market exits include an estimated 0.10% round-trip fee; slippage and funding are not fully modeled. Signals are rule-based research candidates, not financial advice.</p></section>
+</main>
+<script>
+const money=n=>'$'+Number(n||0).toFixed(2), el=id=>document.getElementById(id);
+async function api(path,opts={}){let r=await fetch(path,{headers:{'Content-Type':'application/json'},...opts});let d=await r.json();if(!r.ok)throw Error(d.detail||'Request failed');return d}
+function msg(s){el('msg').textContent=s}
+async function refresh(){try{let s=await api('/api/state');el('equity').textContent=money(s.equity);el('pnl').textContent=money(s.realized_pnl);el('daily').textContent=money(s.daily_pnl);el('count').textContent=s.positions.length+' / 3';el('updated').textContent='Last scan: '+(s.last_scan?new Date(s.last_scan).toLocaleString():'not yet run')+' · '+(s.paused?'PAUSED':'ACTIVE');renderPending(s.pending);renderPositions(s.positions);renderHistory(s.trades);renderAI(s.config.ai)}catch(e){msg(e.message)}}
+function renderSignals(a){el('signals').innerHTML=a.map(x=>`<div class="signal"><div class="row"><b>${x.symbol}</b><span class="tag">${x.side||'NO SETUP'}</span></div><div class="metric">${money(x.price)}</div><p class="muted">${x.setup||'No qualified setup'} · RSI ${x.rsi.toFixed(1)} · Vol ${x.relative_volume.toFixed(2)}x</p><small>${(x.rationale||[]).join(' · ')||'Waiting for confirmation'}</small></div>`).join('')}
+function renderPending(a){el('pending').innerHTML=a.length?a.map(o=>`<div class="order"><div class="row"><b>${o.symbol} · <span class="${o.side.toLowerCase()}">${o.side}</span> · ${o.setup}</b><span class="tag">AWAITING YOUR APPROVAL</span></div><p class="muted">Entry ${money(o.entry)} · Qty ${o.qty.toFixed(5)} · Notional ${money(o.notional)} · Risk ${money(o.risk_usd)}</p><p class="muted">Stop ${money(o.stop)} · Target ${money(o.target)} · ${o.rationale.join(' / ')}</p><div class="actions"><button onclick="decision('${o.id}','approve')">Approve paper trade</button><button class="secondary" onclick="decision('${o.id}','reject')">Reject</button></div></div>`).join(''):'<small class="muted">No pending approvals.</small>'}
+function renderPositions(a){el('positions').innerHTML=a.length?'<table><tr><th>Pair</th><th>Side</th><th>Entry</th><th>Stop</th><th>Target</th><th>Notional</th><th></th></tr>'+a.map(o=>`<tr><td>${o.symbol}</td><td>${o.side}</td><td>${money(o.entry)}</td><td>${money(o.stop)}</td><td>${money(o.target)}</td><td>${money(o.notional)}</td><td><button class="secondary" onclick="closePos('${o.id}')">Close</button></td></tr>`).join('')+'</table>':'<small class="muted">No open positions.</small>'}
+function renderHistory(a){el('history').innerHTML=a.length?'<table><tr><th>Pair</th><th>Side</th><th>Status</th><th>Net P&L</th><th>Closed</th></tr>'+a.slice().reverse().slice(0,30).map(o=>`<tr><td>${o.symbol}</td><td>${o.side}</td><td>${o.status}</td><td class="${(o.net_pnl||0)>=0?'long':'short'}">${o.net_pnl===undefined?'—':money(o.net_pnl)}</td><td>${o.closed_at?new Date(o.closed_at).toLocaleString():'—'}</td></tr>`).join('')+'</table>':'<small class="muted">No trade history yet.</small>'}
+async function scan(){msg('Scanning Binance Futures…');try{let d=await api('/api/scan',{method:'POST',body:JSON.stringify({top_n:Number(el('topN').value)})});renderSignals(d.signals);msg('Scan complete. Review any pending setup before approving.');await refresh()}catch(e){msg(e.message)}}
+async function decision(id,d){try{await api('/api/orders/'+encodeURIComponent(id)+'/decision',{method:'POST',body:JSON.stringify({decision:d})});msg(d==='approve'?'Paper position opened.':'Signal rejected.');await refresh();await refreshLearning()}catch(e){msg(e.message)}}
+async function closePos(id){try{let d=await api('/api/positions/'+encodeURIComponent(id)+'/close',{method:'POST'});msg('Paper position closed. Net P&L '+money(d.closed.net_pnl));await refresh();await refreshLearning()}catch(e){msg(e.message)}}
+async function pause(){try{let d=await api('/api/pause',{method:'POST'});msg(d.paused?'Trading paused.':'Trading resumed.');await refresh()}catch(e){msg(e.message)}}
+async function resetAccount(){if(!confirm('Reset the $1,000 paper account and erase its trade history?'))return;try{await api('/api/reset',{method:'POST'});msg('Paper account reset.');await refresh()}catch(e){msg(e.message)}}
+
+function renderAI(a){if(!a)return;el('aiBadge').textContent=a.active?'AI FILTER ACTIVE':(a.trained?'MODEL TRAINED · FILTER OFF':'AI FILTER OFF');el('aiToggle').textContent=a.active?'Deactivate AI filter':'Activate AI filter';el('aiStatus').innerHTML=a.trained?`<b>Model trained:</b> ${new Date(a.trained_at).toLocaleString()} · ${a.symbols.length} coins · ${a.training_samples} training samples · ${a.validation_samples} validation samples<br><b>Validation accuracy:</b> ${a.validation.accuracy_pct}% · <b>Balanced accuracy:</b> ${a.validation.balanced_accuracy_pct}% · <b>Confidence threshold:</b> ${Math.round(a.confidence_threshold*100)}%<br><small>Classes: SHORT / NEUTRAL / LONG. This is a direction classifier, not a profit predictor.</small>`:'No model trained yet. The rule-based strategy continues unchanged.'}
+async function trainAI(){el('aiStatus').textContent='Downloading candles and training AI model. This may take several minutes…';try{let d=await api('/api/ai/train',{method:'POST',body:JSON.stringify({days:Number(el('aiDays').value),top_n:Number(el('topN').value)})});msg('AI model trained and saved. It remains OFF until you activate it.');renderAI(d);await refresh()}catch(e){el('aiStatus').textContent='Training failed: '+e.message}}
+async function toggleAI(){try{let s=await api('/api/ai/status');let d=await api('/api/ai/activate',{method:'POST',body:JSON.stringify({active:!s.active,confidence_threshold:s.confidence_threshold||0.58})});renderAI(d);msg(d.active?'AI signal filter activated. Manual approval and risk limits remain in force.':'AI signal filter deactivated.');await refresh()}catch(e){msg(e.message)}}
+
+async function refreshLearning(){
+  try{
+    const d=await api('/api/learning');
+    const rows=d.insights||[];
+    el('learningPanel').innerHTML=`<div class="grid">
+      <div><div class="label">Closed trades learned</div><div class="metric">${d.closed_trade_count}</div></div>
+      <div><div class="label">Approved</div><div class="metric">${d.approved_count}</div></div>
+      <div><div class="label">Rejected</div><div class="metric">${d.rejected_count}</div></div></div>
+      <h3>Performance insights (minimum 5 trades per segment)</h3>
+      ${rows.length?'<table><tr><th>Segment</th><th>Trades</th><th>Win rate</th><th>Recent avg R</th><th>Confidence</th><th>Adjusted score</th></tr>'+
+      rows.map(x=>`<tr><td>${x.segment}</td><td>${x.trades}</td><td>${x.win_rate_pct}%</td><td>${x.recent_avg_r}R</td><td>${Math.round(x.confidence*100)}%</td><td>${x.adjusted_score}R</td></tr>`).join('')+'</table>':'<p class="muted">Not enough completed paper trades yet. Insights appear after at least five observations in a segment.</p>'}
+      <p class="muted">${d.policy}</p>`;
+  }catch(e){el('learningPanel').textContent='Learning status unavailable: '+e.message}
+}
+async function backtest(){
+  el('btSummary').textContent='Downloading historical Binance Futures candles and running LONG, SHORT and combined simulations…';
+  el('btResults').innerHTML='';
+  try{
+    let n=Number(el('topN').value), strategy=el('btStrategy').value;
+    if(n>=30&&Number(el('btDays').value)>90){el('btSummary').textContent='For 30–50 coins, select 90 days or less.';return}
+    let d=await api('/api/backtest',{method:'POST',body:JSON.stringify({days:Number(el('btDays').value),interval:el('btInterval').value,top_n:n,strategy})});
+    let pf=d.profit_factor===null?'—':d.profit_factor;
+    let cmp=d.comparison;
+    el('btSummary').innerHTML=`<div class="row"><b>Selected result: ${d.selected_strategy}</b><span class="tag">ALL THREE MODES TESTED</span></div>
+      <div class="grid">
+      <div><div class="label">Ending equity</div><div class="metric">${money(d.ending_equity)}</div></div>
+      <div><div class="label">Net P&L</div><div class="metric ${d.net_pnl>=0?'long':'short'}">${money(d.net_pnl)}</div></div>
+      <div><div class="label">Return</div><div class="metric">${d.return_pct}%</div></div>
+      <div><div class="label">Win rate</div><div class="metric">${d.win_rate_pct}%</div></div></div>
+      <p class="muted">${d.trades} trades · ${d.wins} wins · ${d.losses} losses · Profit factor ${pf}</p>
+      <h3>Strategy comparison · each independently starts with $1,000</h3>
+      <table><tr><th>Mode</th><th>Net P&L</th><th>Return</th><th>Trades</th><th>Win rate</th><th>Profit factor</th></tr>
+      ${['LONG','SHORT','COMBINED'].map(k=>{let x=cmp[k];return `<tr><td><b>${k}</b></td><td class="${x.net_pnl>=0?'long':'short'}">${money(x.net_pnl)}</td><td>${x.return_pct}%</td><td>${x.trades}</td><td>${x.win_rate_pct}%</td><td>${x.profit_factor===null?'—':x.profit_factor}</td></tr>`}).join('')}</table>`;
+    el('btResults').innerHTML='<h3>Selected strategy · per-coin results</h3><table><tr><th>Pair</th><th>Trades</th><th>Win rate</th><th>Net P&L</th><th>Return</th><th>Max DD</th><th>Candles</th></tr>'+
+      d.symbols.map(s=>`<tr><td>${s.symbol}</td><td>${s.trades}</td><td>${s.win_rate_pct}%</td><td class="${s.net_pnl>=0?'long':'short'}">${money(s.net_pnl)}</td><td>${s.return_pct}%</td><td>${s.max_drawdown_pct}%</td><td>${s.candles}</td></tr>`).join('')+'</table>'+
+      '<h3>Per-coin strategy comparison</h3><table><tr><th>Pair</th><th>LONG P&L</th><th>SHORT P&L</th><th>Combined P&L</th><th>LONG trades</th><th>SHORT trades</th></tr>'+
+      d.per_symbol_comparison.map(s=>`<tr><td>${s.symbol}</td><td class="${s.long.net_pnl>=0?'long':'short'}">${money(s.long.net_pnl)} · ${s.long.trades}</td><td class="${s.short.net_pnl>=0?'long':'short'}">${money(s.short.net_pnl)} · ${s.short.trades}</td><td class="${s.combined.net_pnl>=0?'long':'short'}">${money(s.combined.net_pnl)} · ${s.combined.trades}</td><td>${s.long.trades}</td><td>${s.short.trades}</td></tr>`).join('')+'</table>';
+  }catch(e){el('btSummary').textContent='Backtest failed: '+e.message}
+}
+
+refresh();refreshLearning();setInterval(refresh,15000);
+</script></body></html>
